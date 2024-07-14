@@ -1,53 +1,84 @@
 import {  Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Speedometer from '../../components/speedo/index'
 import * as Progress from 'react-native-progress';
-
 import { useEffect, useState } from 'react';
+import { info } from '../classes';
+
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const values_classe=`text-lg font-semibold ${colorScheme ==="dark" ? "text-white" :"text-black"}`
   const [progress, setProgress] = useState(0);
-  const [indeterminate, setIndeterminate] = useState(true);
-
+  const [dbl,setDbl]=useState(0)
+  const [nbl,setNbl]=useState(0)
+  const [temp,setTemp]=useState(0)
+  const [humd,sethumd]=useState(0)
+  const [hatch,sethatch]=useState(0)
+  const [pump,setPump]=useState(0)
+  const [sock,setSock]=useState<WebSocket>()
+  
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    const timer = setTimeout(() => {
-      setIndeterminate(false);
-      interval = setInterval(() => {
-        setProgress((prevProgress) =>
-          Math.min(1, prevProgress + Math.random() / 5)
-        );
-      }, 500);
-    }, 1500);
-    return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
-    };
+    const conn=new WebSocket("ws://4.4.4.100:80")
+    setSock(conn)
   }, []);
-
+  async function Connect(){
+  if(sock?.readyState===1){
+    const dimentions=await info.getInfo()
+    sock.send("new connection")
+    sock.onmessage = function (event) {
+      const params={}
+      const incoming=String(event.data).split(",")
+      for(const i of incoming){
+        const param=i.split(":")
+        params[param[0]]=param[1]
+      }
+      if (dimentions.height && dimentions.dimeter){
+        const prog=Math.floor((dimentions.height-params.ds)*3.14*(dimentions.dimeter * dimentions.dimeter))
+        setProgress(prog)
+      }
+      else{
+        setProgress(params.ds)
+      }
+      setDbl(params.dbl)
+      setNbl(params.nbl)
+      setPump(Number(params.pst))
+      setTemp(Number(params.tmp))
+      sethatch(Number(params.htst))
+      sethumd(Number(params.hd))
+        };
+    sock.onerror = function (error) {
+      console.error("error:", error);
+    };
+  }else{
+    const conn=new WebSocket("ws://4.4.4.100:80")
+    setSock(conn)
+    Connect()
+  }
+}
   return (
     <SafeAreaView>
       <View className="flex flex-col w-full h-full items-center space-y-4">
-      <View className="bg-[#022930] rounded-full w-11/12 h-1/2 flex flex-col items-center mb-8">
-      <Progress.Circle color='#D0D2D6' thickness={15} indeterminate={indeterminate} direction='counter-clockwise' showsText progress={progress} size={350} borderColor='black'/>
-      <Text className={`mt-2 ${values_classe}`}>Water Level</Text>
+      <View className="w-11/12 h-1/2 flex flex-col mt-4 items-center mb-12">
+      <Progress.Circle color={progress/100<0.5?"red":"blue"} style={{borderRadius:9999,backgroundColor:"green"}} thickness={35} direction='counter-clockwise' showsText progress={progress/100} size={350}/>
+      <View className="flex flex-row w-full justify-evenly items-center">
+      <Text className={`mt-4 ${values_classe}`}>Water Level</Text>
+      <TouchableOpacity className="w-18 h-8 p-1 border bg-slate-600" onPress={()=>Connect()}><Text className="text-green-700 font-semibold">Connect</Text></TouchableOpacity>
+      </View>
       </View>
       <View className="flex flex-col items-center w-full ">
       <View className="flex flex-row justify-between items-center w-full p-2">
       <Text className={values_classe}>Node battery</Text>
-      <Progress.Bar progress={progress} indeterminate={indeterminate}  width={235} height={25} color="#97c72a"/>
+      <Progress.Bar progress={nbl/100.0} width={215} height={25} color={nbl/100<0.5?"red":"#97c72a"}/>
       </View>
       <View className="flex flex-row justify-between items-center w-full p-2">
       <Text className={values_classe}>Sensor battery</Text>
-      <Progress.Bar progress={progress} indeterminate={indeterminate} width={235} height={25} color="#97c72a"/>
+      <Progress.Bar progress={dbl/100.0} width={215} height={25} color={dbl/100<0.5?"red":"#97c72a"}/>
       </View>
       </View>
       <View  className="flex flex-col justify-center w-full space-y-3 p-1">
-          <View><Text className={values_classe}>Temp : 28c</Text></View>
-          <View><Text className={values_classe}>Humidity : 45%</Text></View>
-          <View><Text className={values_classe}>Hatch stats : closed</Text></View>
-          <View><Text className={values_classe}>Pump stats : on</Text></View>
+          <View><Text className={values_classe}>Temp : {temp}</Text></View>
+          <View><Text className={values_classe}>Humidity : {humd}</Text></View>
+          <View><Text className={values_classe}>Hatch stats : {hatch ? "open":"closed"}</Text></View>
+          <View><Text className={values_classe}>Pump stats : {pump ? "open":"closed"}</Text></View>
       </View>
       </View>
     </SafeAreaView>

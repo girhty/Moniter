@@ -8,33 +8,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import CheckBox from "expo-checkbox";
 import Slider from "@react-native-community/slider";
-import { useState } from "react";
-interface Info {
-  dimeter: number;
-  height: number;
-  water_level: { value: number; direction: string };
-  pump_activation: { value: number; direction: string };
-  distance: boolean;
-}
+import { useEffect, useState } from "react";
+import { Info, info } from "../classes";
+
+
 export default function TabTwoScreen() {
-  function setInfo(
-    d: number,
-    h: number,
-    wla: number,
-    wlb: boolean,
-    pl: number,
-    plb: boolean,
-    dis: boolean
-  ) {
-    const out: Info = {
-      dimeter: d,
-      distance: dis,
-      height: h,
-      pump_activation: { value: pl, direction: plb ? "below" : "above" },
-      water_level: { value: wla, direction: wlb ? "below" : "above" },
-    };
-    console.log(out);
-  }
+  const [settings,setSettings]=useState<Info>()
+  useEffect(()=>{
+    info.getInfo().then(v=>setSettings({data:v}))
+  },[])
   const colorScheme = useColorScheme();
   const [water_level_below, setWater_level_below] = useState(false);
   const [pump_level_below, setPump_level_below] = useState(false);
@@ -83,14 +65,14 @@ export default function TabTwoScreen() {
             style={{ width: 370, height: 40 }}
             minimumValue={0}
             step={1}
-            value={water_level}
+            value={water_level>0 ? water_level:settings?.data.water_level?.value}
             onSlidingComplete={(val) => setWater_level(val)}
             maximumValue={100}
             minimumTrackTintColor={colorScheme === "dark" ? "green" : "#45818E"}
             maximumTrackTintColor={colorScheme === "dark" ? "white" : "#000000"}
             thumbTintColor="black"
           />
-          <Text className={textstyl}>{water_level && water_level}</Text>
+          <Text className={textstyl}>{water_level>0 ? water_level:settings?.data.water_level?.value}</Text>
           <View className="flex flex-row space-x-2 p-3 items-center w-full">
             <CheckBox
               className={toggle}
@@ -107,7 +89,7 @@ export default function TabTwoScreen() {
           <Slider
             style={{ width: 370, height: 40 }}
             minimumValue={0}
-            value={pump_level}
+            value={pump_level>0 ? pump_level:settings?.data.pump_activation?.value}
             step={1}
             onSlidingComplete={(val) => setPump_level(val)}
             maximumValue={100}
@@ -115,7 +97,7 @@ export default function TabTwoScreen() {
             maximumTrackTintColor={colorScheme === "dark" ? "white" : "#000000"}
             thumbTintColor="black"
           />
-          <Text className={textstyl}>{pump_level && pump_level}</Text>
+          <Text className={textstyl}>{pump_level>0 ? pump_level:settings?.data.pump_activation?.value}</Text>
           <View className="flex flex-row space-x-2 p-3 items-center w-full">
             <CheckBox
               className={toggle}
@@ -144,8 +126,8 @@ export default function TabTwoScreen() {
         <TouchableOpacity className="w-2/6 flex flex-col items-center text-center bg-opacity-30 border-2 bg-[#45818E] rounded-md p-2">
           <Text
             className={textstyl}
-            onPress={() =>
-              setInfo(
+            onPress={() =>{
+              info.setInfo(
                 dimeter,
                 height,
                 water_level,
@@ -153,7 +135,7 @@ export default function TabTwoScreen() {
                 pump_level,
                 pump_level_below,
                 distance
-              )
+              ),info.getInfo().then(v=>setSettings({data:v}))}
             }>
             Save
           </Text>
